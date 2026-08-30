@@ -5,12 +5,16 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=111)](https://react.dev/)
 [![Vite](https://img.shields.io/badge/Vite-7-646CFF?logo=vite&logoColor=white)](https://vite.dev/)
+[![License](https://img.shields.io/badge/License-NC--RTL--1.0-red)](./LICENSE)
 
 一个纯浏览器本地运行的 Chrome Manifest V3 扩展，用于解析和下载抖音网页版的单视频与图文作品。
 
 无需后端，不调用第三方解析 API，不会把 Cookie、Token、作品信息或媒体地址发送到无关服务器。扩展优先复用用户当前浏览器中的抖音页面环境和登录状态。
 
 > 当前版本：`0.1.1`。第一阶段聚焦单视频、图文、分享链接解析和下载。
+
+> [!WARNING]
+> 本项目仅允许个人非商业研究与测试，禁止商用、收费服务、广告变现、组织内部生产使用、应用商店发布和构建产物再分发。使用者只能处理其依法有权保存的内容。使用前请阅读 [`LICENSE`](./LICENSE) 和 [`DISCLAIMER.md`](./DISCLAIMER.md)。
 
 ## 功能
 
@@ -268,7 +272,7 @@ src/
 
 ## 参与贡献
 
-欢迎提交 Issue 或 Pull Request。与抖音字段变化相关的修复请尽量附带：
+欢迎在遵守非商业许可证的前提下提交 Issue 或 Pull Request。与抖音字段变化相关的修复请尽量附带：
 
 - 页面类型和 URL 结构；
 - 可脱敏的字段形状或错误信息；
@@ -278,8 +282,16 @@ src/
 
 请勿在 Issue、日志或截图中公开 Cookie、Token、账号隐私或带签名的长期有效资源地址。
 
-## 使用说明
+## 许可证与使用说明
 
-请尊重平台服务条款和原作者版权，仅下载你有权保存和使用的内容。使用者需自行承担下载、保存和传播内容所产生的责任。
+本项目采用自定义的 [非商业研究与测试许可证 1.0（NC-RTL-1.0）](./LICENSE)：
 
-当前仓库尚未附加开源许可证。源码公开不代表自动授予复制、修改或再分发权限。
+- 仅允许个人非商业研究、学习和测试；
+- 禁止商业使用、组织内部生产使用、收费服务、广告变现和商店上架；
+- 禁止未经书面许可分发构建产物或衍生产品；
+- 所有商业授权和例外必须取得权利人的事先书面许可；
+- 违规时授权自动终止。
+
+本项目是 Source Available 软件，不是 OSI 定义的开放源代码软件。GitHub 的公开可见性和 Fork 功能不构成额外商业授权。
+
+请同时阅读完整的 [`DISCLAIMER.md`](./DISCLAIMER.md)。任何许可证或免责声明都不能排除适用法律明确规定不得排除的责任；如需针对具体商业或法律场景作出决定，请咨询合格律师。
