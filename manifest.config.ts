@@ -4,8 +4,8 @@ export default defineManifest({
   manifest_version: 3,
   name: '抖音本地下载助手',
   description: '在浏览器本地解析并下载抖音网页版视频和图文作品。',
-  version: '0.1.0',
-  minimum_chrome_version: '102',
+  version: '0.1.1',
+  minimum_chrome_version: '109',
   action: {
     default_title: '抖音本地下载助手',
     default_popup: 'popup.html',
@@ -14,7 +14,7 @@ export default defineManifest({
     service_worker: 'src/background/index.ts',
     type: 'module',
   },
-  permissions: ['downloads', 'tabs', 'clipboardWrite'],
+  permissions: ['downloads', 'tabs', 'clipboardWrite', 'declarativeNetRequestWithHostAccess'],
   host_permissions: [
     'https://*.douyin.com/*',
     'https://*.douyinvod.com/*',

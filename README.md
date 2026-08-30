@@ -32,7 +32,7 @@ npm run build
 3. MAIN world 只读观察页面自己的 fetch/XHR JSON 响应；
 4. 前三层未命中时，在当前抖音页面环境中请求同源 `aweme/detail`。
 
-分享链接使用后台临时非活动标签页打开，沿用用户浏览器当前的抖音登录环境；解析完成后自动关闭。下载通过 `chrome.downloads` API 发起。
+分享链接使用后台临时非活动标签页打开，沿用用户浏览器当前的抖音登录环境；解析完成后自动关闭。下载通过 `chrome.downloads` API 发起。下载前会为抖音 CDN 请求注入页面来源头，并使用小范围 Range 请求校验 MP4/图片文件头，避免把风控 HTML 页面误存为媒体文件。
 
 页面内下载按钮由 `src/content/page-download-button.ts` 管理，只提供入口和状态反馈，解析仍调用现有 `GET_PAGE_MEDIA`，下载仍调用后台 `downloads.ts`。按钮状态包括下载、解析中、下载中、已下载和下载失败；下载失败时可直接重试。
 

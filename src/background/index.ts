@@ -2,8 +2,13 @@ import { extractAwemeId, extractDouyinUrl, isDouyinPageUrl, isDouyinShortUrl } f
 import type { DouyinMedia, ParseResponse } from '../douyin';
 import type { ExtensionRequest, ExtensionResponse } from '../shared/messages';
 import { downloadImages, downloadVideo, waitForDownloads } from './downloads';
+import { ensureDouyinRequestRules } from './request-rules';
 
 const mediaByTab = new Map<number, DouyinMedia>();
+
+chrome.runtime.onInstalled.addListener(() => void ensureDouyinRequestRules());
+chrome.runtime.onStartup.addListener(() => void ensureDouyinRequestRules());
+void ensureDouyinRequestRules();
 
 function sendToTab(tabId: number): Promise<ParseResponse> {
   return chrome.tabs.sendMessage(tabId, { type: 'GET_PAGE_MEDIA' } satisfies ExtensionRequest);

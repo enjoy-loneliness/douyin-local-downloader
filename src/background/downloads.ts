@@ -1,4 +1,5 @@
 import type { DouyinMedia } from '../douyin';
+import { validateRemoteMedia } from './media-validation';
 
 // Chrome filenames must exclude both path separators and ASCII control characters.
 // eslint-disable-next-line no-control-regex
@@ -13,7 +14,9 @@ export function mediaBaseName(media: DouyinMedia): string {
   return [safePart(media.author.nickname, '未知作者'), safePart(media.title, '抖音作品'), media.awemeId].join('_');
 }
 
-function imageExtension(url: string): string {
+function imageExtension(url: string, contentType?: string): string {
+  const typeExtension = contentType?.match(/^image\/(jpeg|jpg|png|webp|gif)/i)?.[1]?.toLowerCase();
+  if (typeExtension) return typeExtension === 'jpeg' ? 'jpg' : typeExtension;
   try {
     const extension = new URL(url).pathname.match(/\.(jpe?g|png|webp|gif)$/i)?.[1]?.toLowerCase();
     return extension ? (extension === 'jpeg' ? 'jpg' : extension) : 'jpg';
@@ -30,6 +33,7 @@ function assertHttps(url: string): void {
 export async function downloadVideo(media: DouyinMedia): Promise<number[]> {
   if (media.kind !== 'video' || !media.videoUrl) throw new Error('当前作品没有可下载的视频地址。');
   assertHttps(media.videoUrl);
+  await validateRemoteMedia(media.videoUrl, 'video');
   const id = await chrome.downloads.download({
     url: media.videoUrl,
     filename: `${mediaBaseName(media)}.mp4`,
@@ -46,11 +50,12 @@ export async function downloadImages(media: DouyinMedia, indexes?: number[]): Pr
   const ids: number[] = [];
   for (const image of selected) {
     assertHttps(image.url);
+    const contentType = await validateRemoteMedia(image.url, 'image');
     const suffix = String(image.index).padStart(width, '0');
     ids.push(
       await chrome.downloads.download({
         url: image.url,
-        filename: `${mediaBaseName(media)}_${suffix}.${imageExtension(image.url)}`,
+        filename: `${mediaBaseName(media)}_${suffix}.${imageExtension(image.url, contentType)}`,
         conflictAction: 'uniquify',
         saveAs: false,
       }),
@@ -65,7 +70,7 @@ function waitForDownload(downloadId: number, timeoutMs: number): Promise<void> {
     const listener = (delta: chrome.downloads.DownloadDelta) => {
       if (delta.id !== downloadId || !delta.state?.current) return;
       if (delta.state.current === 'complete') finish();
-      if (delta.state.current === 'interrupted') finish(new Error(delta.error?.current || '下载被中断。'));
+      if (delta.state.current === 'interrupted') finish(downloadInterruptionError(delta.error?.current));
     };
     const finish = (error?: Error) => {
       clearTimeout(timer);
@@ -76,9 +81,19 @@ function waitForDownload(downloadId: number, timeoutMs: number): Promise<void> {
     chrome.downloads.onChanged.addListener(listener);
     chrome.downloads.search({ id: downloadId }).then(([item]) => {
       if (item?.state === 'complete') finish();
-      else if (item?.state === 'interrupted') finish(new Error(item.error || '下载被中断。'));
+      else if (item?.state === 'interrupted') finish(downloadInterruptionError(item.error));
     });
   });
+}
+
+function downloadInterruptionError(reason?: string): Error {
+  if (reason === 'SERVER_BAD_CONTENT') {
+    return new Error('抖音返回了无效下载内容。请刷新作品页面并重新播放后再试。');
+  }
+  if (reason === 'SERVER_FORBIDDEN' || reason === 'SERVER_UNAUTHORIZED') {
+    return new Error('抖音拒绝了下载请求，媒体地址可能已过期。请刷新页面后重试。');
+  }
+  return new Error(reason ? `下载被中断：${reason}` : '下载被中断。');
 }
 
 export async function waitForDownloads(downloadIds: number[], timeoutMs = 10 * 60_000): Promise<void> {
