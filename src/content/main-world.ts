@@ -1,4 +1,4 @@
-import { extractAwemeId, normalizeAwemePayload } from '../douyin';
+import { findCurrentPageWork, normalizeAwemePayload } from '../douyin';
 import type { DouyinMedia, DouyinSource } from '../douyin';
 
 const BRIDGE_SCOPE = '__DOUYIN_LOCAL_DOWNLOADER_V1__';
@@ -22,15 +22,7 @@ if (!pageWindow[INSTALL_MARKER]) {
 }
 
 function currentAwemeId(): string | null {
-  const fromUrl = extractAwemeId(location.href);
-  if (fromUrl) return fromUrl;
-
-  const playing = [...document.querySelectorAll('video')].find((video) => {
-    const rect = video.getBoundingClientRect();
-    return !video.paused && rect.width > 0 && rect.height > 0 && rect.bottom > 0 && rect.top < innerHeight;
-  });
-  const nearby = playing?.closest('article, section, [data-e2e], [class]')?.querySelector('a[href*="/video/"]');
-  return extractAwemeId((nearby as HTMLAnchorElement | null)?.href ?? '');
+  return findCurrentPageWork().awemeId;
 }
 
 function saveCapture(media: DouyinMedia): void {
@@ -106,7 +98,7 @@ function scanPageData(preferredAwemeId = currentAwemeId()): DouyinMedia | null {
 
 function scanDom(preferredAwemeId = currentAwemeId()): DouyinMedia | null {
   if (!preferredAwemeId) return null;
-  const video = [...document.querySelectorAll('video')].find((entry) => !entry.paused) ?? document.querySelector('video');
+  const video = findCurrentPageWork().video;
   const videoUrl = video?.currentSrc || video?.src || video?.querySelector('source')?.src;
   if (!videoUrl || videoUrl.startsWith('blob:')) return null;
 
@@ -153,8 +145,9 @@ async function requestAwemeDetail(awemeId: string): Promise<DouyinMedia | null> 
   });
   try {
     const response = await originalFetch(`/aweme/v1/web/aweme/detail/?${params}`, {
+      cache: 'no-store',
       credentials: 'include',
-      headers: { Accept: 'application/json' },
+      headers: { Accept: 'application/json', 'Cache-Control': 'no-cache' },
     });
     if (!response.ok) return null;
     return consumePayload(await response.json(), 'request', awemeId);
@@ -222,7 +215,7 @@ function installBridge(): void {
     if (event.source !== window || event.data?.scope !== BRIDGE_SCOPE || event.data?.type !== 'scan') return;
     const awemeId = typeof event.data.awemeId === 'string' ? event.data.awemeId : currentAwemeId();
     const found = scanPageData(awemeId) ?? scanDom(awemeId);
-    if (!found && event.data.allowRequest && awemeId) void requestAwemeDetail(awemeId);
+    if ((event.data.forceRequest || (!found && event.data.allowRequest)) && awemeId) void requestAwemeDetail(awemeId);
   });
 
   const runInitialScan = () => scanPageData() ?? scanDom();

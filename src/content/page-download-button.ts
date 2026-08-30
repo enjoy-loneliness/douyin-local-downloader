@@ -5,7 +5,7 @@ type ButtonState = 'idle' | 'parsing' | 'downloading' | 'success' | 'error';
 
 interface PageDownloadButtonOptions {
   getCurrentAwemeId: () => string | null;
-  resolveCurrentMedia: () => Promise<ParseResponse>;
+  resolveCurrentMedia: (forceFresh?: boolean) => Promise<ParseResponse>;
 }
 
 const HOST_ID = 'douyin-local-downloader-action';
@@ -159,7 +159,7 @@ export function installPageDownloadButton(options: PageDownloadButtonOptions): (
     clearTimeout(successTimer);
     setState('parsing');
     try {
-      const parsed = await options.resolveCurrentMedia();
+      const parsed = await options.resolveCurrentMedia(true);
       if (!parsed.ok || !parsed.media) throw new Error(parsed.error || '解析失败');
       if (options.getCurrentAwemeId() !== clickedAwemeId || parsed.media.awemeId !== clickedAwemeId) {
         throw new Error('作品已切换，请重新点击下载');
@@ -205,6 +205,8 @@ export function installPageDownloadButton(options: PageDownloadButtonOptions): (
       clearTimeout(successTimer);
       setState('idle');
     }
+
+    host.dataset.awemeId = awemeId;
 
     const nativeAction = container.querySelector<HTMLElement>(ACTION_HINTS);
     const color = nativeAction ? getComputedStyle(nativeAction).color : getComputedStyle(container).color;

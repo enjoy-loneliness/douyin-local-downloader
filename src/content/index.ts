@@ -1,4 +1,4 @@
-import { extractAwemeId } from '../douyin';
+import { findCurrentPageWork } from '../douyin';
 import type { DouyinMedia, ParseResponse } from '../douyin';
 import type { ExtensionRequest } from '../shared/messages';
 import { installPageDownloadButton } from './page-download-button';
@@ -6,6 +6,7 @@ import { installPageDownloadButton } from './page-download-button';
 const BRIDGE_SCOPE = '__DOUYIN_LOCAL_DOWNLOADER_V1__';
 const CAPTURE_ATTRIBUTE = 'data-douyin-local-downloader-captures';
 const captures = new Map<string, DouyinMedia>();
+const captureVersions = new Map<string, number>();
 
 function readCaptures(): void {
   try {
@@ -20,43 +21,23 @@ function readCaptures(): void {
 }
 
 function currentAwemeId(): string | null {
-  const fromUrl = extractAwemeId(location.href);
-  if (fromUrl) return fromUrl;
-
-  const activeVideo = [...document.querySelectorAll('video')]
-    .map((video) => ({ video, rect: video.getBoundingClientRect() }))
-    .filter(({ rect }) => rect.width > 0 && rect.height > 0 && rect.bottom > 0 && rect.top < innerHeight)
-    .sort((a, b) => {
-      const playingA = !a.video.paused && !a.video.ended ? 1 : 0;
-      const playingB = !b.video.paused && !b.video.ended ? 1 : 0;
-      return playingB - playingA || b.rect.width * b.rect.height - a.rect.width * a.rect.height;
-    })[0]?.video;
-
-  let ancestor: HTMLElement | null = activeVideo;
-  for (let depth = 0; ancestor && depth < 20; depth += 1, ancestor = ancestor.parentElement) {
-    const dataId = ancestor.getAttribute('data-e2e-vid') || ancestor.getAttribute('data-aweme-id');
-    if (dataId && /^\d{6,}$/.test(dataId)) return dataId;
-    for (const link of ancestor.querySelectorAll<HTMLAnchorElement>('a[href*="/video/"], a[href*="/note/"]')) {
-      const id = extractAwemeId(link.href || link.getAttribute('href') || '');
-      if (id) return id;
-    }
-  }
-  return null;
+  return findCurrentPageWork().awemeId;
 }
 
-function postScan(allowRequest: boolean): void {
+function postScan(allowRequest: boolean, forceRequest = false): void {
   window.postMessage(
     {
       scope: BRIDGE_SCOPE,
       type: 'scan',
       awemeId: currentAwemeId(),
       allowRequest,
+      forceRequest,
     },
     '*',
   );
 }
 
-async function resolveCurrentMedia(): Promise<ParseResponse> {
+async function resolveCurrentMedia(forceFresh = false): Promise<ParseResponse> {
   const awemeId = currentAwemeId();
   if (!awemeId) return { ok: false, error: '当前页面不是抖音视频或图文详情页。' };
 
@@ -65,8 +46,23 @@ async function resolveCurrentMedia(): Promise<ParseResponse> {
     return captures.get(awemeId);
   };
 
-  const existing = find();
-  if (existing) return { ok: true, media: existing };
+  if (!forceFresh) {
+    const existing = find();
+    if (existing) return { ok: true, media: existing };
+  } else {
+    const previousVersion = captureVersions.get(awemeId) ?? 0;
+    postScan(true, true);
+    for (let attempt = 0; attempt < 24; attempt += 1) {
+      await new Promise((resolve) => setTimeout(resolve, 250));
+      if (currentAwemeId() !== awemeId) return { ok: false, error: '作品已切换，请重新点击下载。' };
+      const media = captures.get(awemeId);
+      const version = captureVersions.get(awemeId) ?? 0;
+      if (media && version > previousVersion && (media.source === 'request' || media.source === 'network')) {
+        return { ok: true, media };
+      }
+    }
+    return { ok: false, error: '无法刷新当前作品的下载地址，请继续播放几秒后重试。' };
+  }
 
   postScan(false);
   for (let attempt = 0; attempt < 8; attempt += 1) {
@@ -90,12 +86,13 @@ window.addEventListener('message', (event: MessageEvent) => {
   const media = event.data.media as DouyinMedia | undefined;
   if (!media?.awemeId) return;
   captures.set(media.awemeId, media);
+  captureVersions.set(media.awemeId, (captureVersions.get(media.awemeId) ?? 0) + 1);
   chrome.runtime.sendMessage({ type: 'CONTENT_MEDIA_UPDATE', media }).catch(() => undefined);
 });
 
 chrome.runtime.onMessage.addListener((message: ExtensionRequest, _sender, sendResponse) => {
   if (message.type !== 'GET_PAGE_MEDIA') return false;
-  resolveCurrentMedia().then(sendResponse);
+  resolveCurrentMedia(message.fresh === true).then(sendResponse);
   return true;
 });
 
