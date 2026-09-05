@@ -1,4 +1,5 @@
-import type { DouyinMedia } from '../douyin';
+import type { DownloadableMedia } from '../shared/messages';
+import { mediaContentId } from '../shared/media';
 import { validateRemoteMedia } from './media-validation';
 
 // Chrome filenames must exclude both path separators and ASCII control characters.
@@ -10,8 +11,10 @@ function safePart(value: string, fallback: string): string {
   return (clean || fallback).slice(0, 80);
 }
 
-export function mediaBaseName(media: DouyinMedia): string {
-  return [safePart(media.author.nickname, '未知作者'), safePart(media.title, '抖音作品'), media.awemeId].join('_');
+export function mediaBaseName(media: DownloadableMedia): string {
+  const author = media.platform === 'twitter' ? media.author.uniqueId || media.author.nickname : media.author.nickname;
+  const fallbackTitle = media.platform === 'twitter' ? 'X视频' : '抖音作品';
+  return [safePart(author, '未知作者'), safePart(media.title, fallbackTitle), mediaContentId(media)].join('_');
 }
 
 function imageExtension(url: string, contentType?: string): string {
@@ -30,21 +33,30 @@ function assertHttps(url: string): void {
   if (parsed.protocol !== 'https:') throw new Error('拒绝下载非 HTTPS 资源。');
 }
 
-export async function downloadVideo(media: DouyinMedia): Promise<number[]> {
+export async function downloadVideo(media: DownloadableMedia): Promise<number[]> {
   if (media.kind !== 'video' || !media.videoUrl) throw new Error('当前作品没有可下载的视频地址。');
-  assertHttps(media.videoUrl);
-  await validateRemoteMedia(media.videoUrl, 'video');
-  const id = await chrome.downloads.download({
-    url: media.videoUrl,
-    filename: `${mediaBaseName(media)}.mp4`,
-    conflictAction: 'uniquify',
-    saveAs: false,
-  });
-  return [id];
+  const videos = media.platform === 'twitter' ? media.videos : [{ index: 1, url: media.videoUrl }];
+  const ids: number[] = [];
+  for (const video of videos) {
+    assertHttps(video.url);
+    await validateRemoteMedia(video.url, 'video');
+    const suffix = videos.length > 1 ? `_${video.index}` : '';
+    ids.push(
+      await chrome.downloads.download({
+        url: video.url,
+        filename: `${mediaBaseName(media)}${suffix}.mp4`,
+        conflictAction: 'uniquify',
+        saveAs: false,
+      }),
+    );
+  }
+  return ids;
 }
 
-export async function downloadImages(media: DouyinMedia, indexes?: number[]): Promise<number[]> {
-  if (media.kind !== 'image' || media.images.length === 0) throw new Error('当前作品没有可下载的图片。');
+export async function downloadImages(media: DownloadableMedia, indexes?: number[]): Promise<number[]> {
+  if (media.platform !== 'douyin' || media.kind !== 'image' || media.images.length === 0) {
+    throw new Error('当前作品没有可下载的图片。');
+  }
   const selected = indexes?.length ? media.images.filter((image) => indexes.includes(image.index)) : media.images;
   const width = String(media.images.length).length;
   const ids: number[] = [];
@@ -88,10 +100,10 @@ function waitForDownload(downloadId: number, timeoutMs: number): Promise<void> {
 
 function downloadInterruptionError(reason?: string): Error {
   if (reason === 'SERVER_BAD_CONTENT') {
-    return new Error('抖音返回了无效下载内容。请刷新作品页面并重新播放后再试。');
+    return new Error('平台返回了无效下载内容。请刷新作品页面并重新播放后再试。');
   }
   if (reason === 'SERVER_FORBIDDEN' || reason === 'SERVER_UNAUTHORIZED') {
-    return new Error('抖音拒绝了下载请求，媒体地址可能已过期。请刷新页面后重试。');
+    return new Error('平台拒绝了下载请求，媒体地址可能已过期。请刷新页面后重试。');
   }
   return new Error(reason ? `下载被中断：${reason}` : '下载被中断。');
 }

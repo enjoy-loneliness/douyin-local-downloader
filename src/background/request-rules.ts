@@ -1,32 +1,38 @@
-const SESSION_RULE_IDS = [8101, 8102, 8103, 8104];
-const DOWNLOAD_RULE_IDS = [8201, 8202, 8203, 8204];
+const CDN_RULES = [
+  { sessionId: 8101, downloadId: 8201, urlFilter: '||douyinvod.com', referer: 'https://www.douyin.com/' },
+  { sessionId: 8102, downloadId: 8202, urlFilter: '||bytecdntp.com', referer: 'https://www.douyin.com/' },
+  { sessionId: 8103, downloadId: 8203, urlFilter: '||douyinpic.com', referer: 'https://www.douyin.com/' },
+  { sessionId: 8104, downloadId: 8204, urlFilter: '||byteimg.com', referer: 'https://www.douyin.com/' },
+  { sessionId: 8105, downloadId: 8205, urlFilter: '||video.twimg.com', referer: 'https://x.com/' },
+];
 
-const CDN_FILTERS = ['||douyinvod.com', '||bytecdntp.com', '||douyinpic.com', '||byteimg.com'];
+const SESSION_RULE_IDS = CDN_RULES.map((rule) => rule.sessionId);
+const DOWNLOAD_RULE_IDS = CDN_RULES.map((rule) => rule.downloadId);
 
 let rulesReady: Promise<void> | null = null;
 
-function refererAction(): chrome.declarativeNetRequest.RuleAction {
+function refererAction(value: string): chrome.declarativeNetRequest.RuleAction {
   return {
     type: chrome.declarativeNetRequest.RuleActionType.MODIFY_HEADERS,
     requestHeaders: [
       {
         header: 'Referer',
         operation: chrome.declarativeNetRequest.HeaderOperation.SET,
-        value: 'https://www.douyin.com/',
+        value,
       },
     ],
   };
 }
 
 function createSessionRules(): chrome.declarativeNetRequest.Rule[] {
-  return CDN_FILTERS.map((urlFilter, index) => ({
-    id: SESSION_RULE_IDS[index],
+  return CDN_RULES.map((rule) => ({
+    id: rule.sessionId,
     priority: 1,
-    action: refererAction(),
+    action: refererAction(rule.referer),
     condition: {
-      urlFilter,
+      urlFilter: rule.urlFilter,
       // Only extension/service-worker initiated requests. Never rewrite requests
-      // made by the Douyin tab itself because it already has the exact Referer.
+      // made by the platform tab itself because it already has the exact Referer.
       tabIds: [chrome.tabs.TAB_ID_NONE],
       resourceTypes: [
         chrome.declarativeNetRequest.ResourceType.XMLHTTPREQUEST,
@@ -38,12 +44,12 @@ function createSessionRules(): chrome.declarativeNetRequest.Rule[] {
 }
 
 function createDownloadRules(): chrome.declarativeNetRequest.Rule[] {
-  return CDN_FILTERS.map((urlFilter, index) => ({
-    id: DOWNLOAD_RULE_IDS[index],
+  return CDN_RULES.map((rule) => ({
+    id: rule.downloadId,
     priority: 1,
-    action: refererAction(),
+    action: refererAction(rule.referer),
     condition: {
-      urlFilter,
+      urlFilter: rule.urlFilter,
       // chrome.downloads requests are classified as OTHER and have no tab id.
       resourceTypes: [chrome.declarativeNetRequest.ResourceType.OTHER],
     },
@@ -61,10 +67,10 @@ async function installRules(): Promise<void> {
   });
 }
 
-export function ensureDouyinRequestRules(): Promise<void> {
+export function ensureMediaRequestRules(): Promise<void> {
   rulesReady ??= installRules().catch((error: unknown) => {
     rulesReady = null;
-    throw new Error(`无法配置抖音 CDN 下载请求：${error instanceof Error ? error.message : String(error)}`);
+    throw new Error(`无法配置媒体 CDN 下载请求：${error instanceof Error ? error.message : String(error)}`);
   });
   return rulesReady;
 }

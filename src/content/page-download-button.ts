@@ -1,5 +1,4 @@
-import type { ParseResponse } from '../douyin';
-import type { ExtensionResponse } from '../shared/messages';
+import type { ExtensionResponse, ParseResponse } from '../shared/messages';
 
 type ButtonState = 'idle' | 'parsing' | 'downloading' | 'success' | 'error';
 
@@ -160,7 +159,9 @@ export function installPageDownloadButton(options: PageDownloadButtonOptions): (
     setState('parsing');
     try {
       const parsed = await options.resolveCurrentMedia(true);
-      if (!parsed.ok || !parsed.media) throw new Error(parsed.error || '解析失败');
+      if (!parsed.ok || !parsed.media || parsed.media.platform !== 'douyin') {
+        throw new Error(parsed.error || '解析失败');
+      }
       if (options.getCurrentAwemeId() !== clickedAwemeId || parsed.media.awemeId !== clickedAwemeId) {
         throw new Error('作品已切换，请重新点击下载');
       }

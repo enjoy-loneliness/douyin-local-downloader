@@ -1,13 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
 
-import type { DouyinMedia, ParseResponse } from '../douyin';
-import type { ExtensionRequest, ExtensionResponse } from '../shared/messages';
+import type { DownloadableMedia, ExtensionRequest, ExtensionResponse, ParseResponse } from '../shared/messages';
+import { mediaContentId } from '../shared/media';
 
 function sendMessage(request: ExtensionRequest): Promise<ExtensionResponse> {
   return chrome.runtime.sendMessage(request);
 }
 
-function sourceLabel(source: DouyinMedia['source']): string {
+function sourceLabel(source: DownloadableMedia['source']): string {
   return {
     'page-data': '页面数据',
     'dom-script': '页面脚本',
@@ -18,14 +18,18 @@ function sourceLabel(source: DouyinMedia['source']): string {
 }
 
 export function App() {
-  const [media, setMedia] = useState<DouyinMedia | null>(null);
+  const [media, setMedia] = useState<DownloadableMedia | null>(null);
   const [shareText, setShareText] = useState('');
   const [busy, setBusy] = useState(true);
   const [status, setStatus] = useState('正在识别当前页面…');
   const [error, setError] = useState('');
 
-  const isVideo = media?.kind === 'video';
-  const primaryLabel = useMemo(() => (isVideo ? '下载无水印视频' : `批量下载 ${media?.images.length ?? 0} 张原图`), [isVideo, media]);
+  const primaryLabel = useMemo(() => {
+    if (!media) return '下载';
+    if (media.kind === 'image') return `批量下载 ${media.images.length} 张原图`;
+    if (media.platform === 'twitter' && media.videos.length > 1) return `下载 ${media.videos.length} 个视频`;
+    return media.platform === 'douyin' ? '下载无水印视频' : '下载最高画质视频';
+  }, [media]);
 
   const applyResponse = (response: ParseResponse) => {
     if (!response.ok || !response.media) {
@@ -48,7 +52,7 @@ export function App() {
 
   const parseShare = async () => {
     if (!shareText.trim()) {
-      setError('请粘贴抖音作品链接或完整分享文本。');
+      setError('请粘贴抖音或 X/Twitter 作品链接、短链接或完整分享文本。');
       return;
     }
     setBusy(true);
@@ -95,7 +99,7 @@ export function App() {
       <header className="app-header">
         <div className="logo-mark" aria-hidden="true">↓</div>
         <div>
-          <h1>抖音本地下载助手</h1>
+          <h1>抖音 / X 本地下载助手</h1>
           <p>仅在你的浏览器中解析</p>
         </div>
         <span className="privacy-dot" title="不发送到第三方服务器" />
@@ -107,7 +111,7 @@ export function App() {
           id="share-text"
           value={shareText}
           onChange={(event) => setShareText(event.target.value)}
-          placeholder="粘贴 douyin.com/video/*、v.douyin.com 或完整分享文本"
+          placeholder="粘贴抖音、x.com、twitter.com、t.co 链接或分享文本"
           rows={3}
         />
         <button className="secondary-button" type="button" onClick={parseShare} disabled={busy}>
@@ -122,7 +126,16 @@ export function App() {
         <section className="media-card">
           <div className="cover-wrap">
             {media.coverUrl ? <img src={media.coverUrl} alt={media.title} /> : <div className="cover-fallback">无封面</div>}
-            <span className="kind-badge">{media.kind === 'video' ? '视频' : `图文 · ${media.images.length} 张`}</span>
+            <span className={`platform-badge platform-${media.platform}`}>
+              {media.platform === 'douyin' ? '抖音' : 'X / Twitter'}
+            </span>
+            <span className="kind-badge">
+              {media.kind === 'image'
+                ? `图文 · ${media.images.length} 张`
+                : media.platform === 'twitter' && media.videos.length > 1
+                  ? `${media.videos.length} 个视频`
+                  : '视频'}
+            </span>
           </div>
           <div className="media-meta">
             <div className="author-row">
@@ -130,7 +143,10 @@ export function App() {
               <strong>{media.author.nickname}</strong>
             </div>
             <h2>{media.title}</h2>
-            <div className="id-row"><span>aweme_id</span><code>{media.awemeId}</code></div>
+            <div className="id-row">
+              <span>{media.platform === 'douyin' ? 'aweme_id' : 'tweet_id'}</span>
+              <code>{mediaContentId(media)}</code>
+            </div>
           </div>
 
           {media.kind === 'image' && (

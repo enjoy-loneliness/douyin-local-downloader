@@ -123,6 +123,7 @@ function normalizeCandidate(record: UnknownRecord, options: NormalizeOptions): D
 
   const nickname = asText(authorRecord.nickname ?? authorRecord.name) ?? '未知作者';
   return {
+    platform: 'douyin',
     awemeId,
     author: {
       nickname,

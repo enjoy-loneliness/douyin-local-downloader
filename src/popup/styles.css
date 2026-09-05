@@ -40,6 +40,8 @@ button:not(:disabled):active { transform: translateY(1px); }
 .cover-wrap::after { content: ""; position: absolute; inset: auto 0 0; height: 54%; background: linear-gradient(transparent, rgba(10,10,12,.84)); pointer-events: none; }
 .cover-fallback { display: grid; place-items: center; height: 100%; color: #686b73; }
 .kind-badge { position: absolute; z-index: 1; right: 11px; bottom: 10px; padding: 5px 8px; border-radius: 8px; color: white; background: rgba(15,16,19,.78); font-size: 11px; font-weight: 700; }
+.platform-badge { position: absolute; z-index: 1; left: 11px; bottom: 10px; padding: 5px 8px; border-radius: 8px; color: white; background: rgba(15,16,19,.78); font-size: 11px; font-weight: 700; }
+.platform-twitter { color: #e8f5fe; background: rgba(29,155,240,.78); }
 .media-meta { padding: 13px 14px 10px; }
 .author-row { display: flex; align-items: center; gap: 7px; color: #f3f3f5; font-size: 12px; }
 .avatar { width: 23px; height: 23px; border-radius: 50%; object-fit: cover; }

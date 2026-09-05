@@ -6,7 +6,14 @@ export interface CurrentPageWork {
 }
 
 export function selectCurrentAwemeId(activeVideoId: string | null, pageUrl: string): string | null {
-  return activeVideoId ?? extractAwemeId(pageUrl);
+  const pageId = extractAwemeId(pageUrl);
+  try {
+    const pathname = new URL(pageUrl).pathname;
+    if (/\/(?:video|note)\/\d{6,}/.test(pathname)) return pageId;
+  } catch {
+    // Fall through to active-card selection for malformed or relative URLs.
+  }
+  return activeVideoId ?? pageId;
 }
 
 function visibleArea(rect: DOMRect): number {

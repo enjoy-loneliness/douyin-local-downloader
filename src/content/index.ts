@@ -1,6 +1,6 @@
 import { findCurrentPageWork } from '../douyin';
-import type { DouyinMedia, ParseResponse } from '../douyin';
-import type { ExtensionRequest } from '../shared/messages';
+import type { DouyinMedia } from '../douyin';
+import type { ExtensionRequest, ParseResponse } from '../shared/messages';
 import { installPageDownloadButton } from './page-download-button';
 
 const BRIDGE_SCOPE = '__DOUYIN_LOCAL_DOWNLOADER_V1__';

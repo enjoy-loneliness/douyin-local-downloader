@@ -101,6 +101,12 @@ function scanDom(preferredAwemeId = currentAwemeId()): DouyinMedia | null {
   const video = findCurrentPageWork().video;
   const videoUrl = video?.currentSrc || video?.src || video?.querySelector('source')?.src;
   if (!videoUrl || videoUrl.startsWith('blob:')) return null;
+  try {
+    const hostname = new URL(videoUrl).hostname.toLowerCase();
+    if (!hostname.endsWith('.douyinvod.com') && !hostname.endsWith('.bytecdntp.com')) return null;
+  } catch {
+    return null;
+  }
 
   const title =
     document.querySelector<HTMLMetaElement>('meta[property="og:title"]')?.content ||
@@ -113,6 +119,7 @@ function scanDom(preferredAwemeId = currentAwemeId()): DouyinMedia | null {
     '未知作者';
 
   const media: DouyinMedia = {
+    platform: 'douyin',
     awemeId: preferredAwemeId,
     author: { nickname: author.trim() },
     title: title.trim() || '抖音作品',

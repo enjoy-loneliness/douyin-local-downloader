@@ -1,7 +1,7 @@
 {
   "name": "douyin-local-downloader",
   "private": true,
-  "version": "0.1.2",
+  "version": "0.2.0",
   "license": "SEE LICENSE IN LICENSE",
   "type": "module",
   "scripts": {

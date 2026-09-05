@@ -1,4 +1,4 @@
-import { ensureDouyinRequestRules } from './request-rules';
+import { ensureMediaRequestRules } from './request-rules';
 
 export type RemoteMediaKind = 'video' | 'image';
 
@@ -25,7 +25,7 @@ export function inspectMediaPrefix(
     trimmed.startsWith('<html') ||
     trimmed.startsWith('{"')
   ) {
-    return { ok: false, error: '抖音返回了网页拦截内容，而不是媒体文件。请刷新作品页面并重新播放后再试。' };
+    return { ok: false, error: '平台返回了网页拦截内容，而不是媒体文件。请刷新作品页面并重新播放后再试。' };
   }
 
   if (kind === 'video') {
@@ -51,7 +51,7 @@ export function inspectMediaPrefix(
 }
 
 export async function validateRemoteMedia(url: string, kind: RemoteMediaKind): Promise<string> {
-  await ensureDouyinRequestRules();
+  await ensureMediaRequestRules();
 
   let response: Response;
   try {
@@ -66,13 +66,13 @@ export async function validateRemoteMedia(url: string, kind: RemoteMediaKind): P
       },
     });
   } catch (error) {
-    throw new Error(`无法访问抖音媒体地址：${error instanceof Error ? error.message : String(error)}`);
+    throw new Error(`无法访问媒体地址：${error instanceof Error ? error.message : String(error)}`);
   }
 
   if (response.status === 401 || response.status === 403) {
-    throw new Error(`抖音媒体地址已过期或拒绝访问（HTTP ${response.status}），请刷新页面后重试。`);
+    throw new Error(`媒体地址已过期或拒绝访问（HTTP ${response.status}），请刷新页面后重试。`);
   }
-  if (!response.ok) throw new Error(`抖音媒体预检失败（HTTP ${response.status}）。`);
+  if (!response.ok) throw new Error(`媒体预检失败（HTTP ${response.status}）。`);
 
   const reader = response.body?.getReader();
   if (!reader) throw new Error('浏览器没有返回可读取的媒体响应。');
@@ -83,7 +83,7 @@ export async function validateRemoteMedia(url: string, kind: RemoteMediaKind): P
   } finally {
     await reader.cancel().catch(() => undefined);
   }
-  if (bytes.length < 12) throw new Error('抖音媒体响应过短，可能是失效地址。');
+  if (bytes.length < 12) throw new Error('媒体响应过短，可能是失效地址。');
 
   const contentType = response.headers.get('content-type') || '';
   const inspection = inspectMediaPrefix(kind, contentType, bytes);

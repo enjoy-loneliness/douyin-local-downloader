@@ -1,34 +1,14 @@
-export type DouyinMediaKind = 'video' | 'image';
+import type { BaseMedia, MediaAuthor, MediaImage, MediaKind } from '../shared/media';
+
+export type DouyinMediaKind = MediaKind;
 
 export type DouyinSource = 'page-data' | 'dom-script' | 'network' | 'request' | 'dom';
 
-export interface DouyinAuthor {
-  nickname: string;
-  uniqueId?: string;
-  avatarUrl?: string;
-}
+export type DouyinAuthor = MediaAuthor;
 
-export interface DouyinImage {
-  index: number;
-  url: string;
-  width?: number;
-  height?: number;
-}
+export type DouyinImage = MediaImage;
 
-export interface DouyinMedia {
+export interface DouyinMedia extends BaseMedia<'douyin', DouyinSource> {
+  platform: 'douyin';
   awemeId: string;
-  author: DouyinAuthor;
-  title: string;
-  coverUrl?: string;
-  kind: DouyinMediaKind;
-  videoUrl?: string;
-  images: DouyinImage[];
-  pageUrl: string;
-  source: DouyinSource;
-}
-
-export interface ParseResponse {
-  ok: boolean;
-  media?: DouyinMedia;
-  error?: string;
 }
